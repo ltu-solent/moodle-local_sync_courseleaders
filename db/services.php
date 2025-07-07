@@ -15,21 +15,27 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Version information for local_sync_courseleaders
+ * External functions and service declaration for Sync course leaders
+ *
+ * Documentation: {@link https://moodledev.io/docs/apis/subsystems/external/description}
  *
  * @package    local_sync_courseleaders
+ * @category   webservice
  * @copyright  2025 Southampton Solent University {@link https://www.solent.ac.uk}
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->component    = 'local_sync_courseleaders';
-$plugin->release      = '1.0';
-$plugin->version      = 2025062301;
-$plugin->requires     = 2024100700;
-$plugin->supported    = [405, 500];
-$plugin->maturity     = MATURITY_STABLE;
-$plugin->dependencies = [
-    'enrol_solaissits' => ANY_VERSION,
+$functions = [
+    'local_sync_courseleaders_update_mappings' => [
+        'classname' => \local_sync_courseleaders\external\update_mappings::class,
+        'description' => 'Update mapping status',
+        'type' => 'write',
+        'ajax' => true,
+        'capabilities' => 'moodle/site:config',
+    ],
+];
+
+$services = [
 ];

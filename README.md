@@ -17,10 +17,22 @@ Student A is enrolled on the following:
 - ABC403_2024/25 (module)
 - XXABCMKGWDGTS (course)
 
+Student B is enrolled on the following:
+
+- ABC401_2024/25 (module)
+- ABC402_2024/25 (module)
+- ABC403_2024/25 (module)
+- XXABCBKGWDGTS (course)
+
 Course leader A is enrolled on the following:
 
 - ABC401_2024/25 (Module leader)
 - XXABCMKGWDGTS (Course leader)
+
+Course leader B is enrolled on the following:
+
+- ABC402_2024/25 (Module leader)
+- XXABCBKGWDGTS (Course leader)
 
 Because Student A is enrolled on those three modules and a course, any Course leader enrolled on that course will get enrolled as course leader on those three moduules. Resulting in the following:
 
@@ -30,6 +42,13 @@ Course leader A is enrolled on the following:
 - ABC402_2024/25 (module) (Course leader)
 - ABC403_2024/25 (module) (Course leader)
 - XXABCMKGWDGTS (course) (Course leader)
+
+Course leader B is enrolled on the following:
+
+- ABC401_2024/25 (module) (Course leader)
+- ABC402_2024/25 (module) (Module leader & Course leader)
+- ABC403_2024/25 (module) (Course leader)
+- XXABCBKGWDGTS (course) (Course leader)
 
 ## Implementation
 

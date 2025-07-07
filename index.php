@@ -15,21 +15,27 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Version information for local_sync_courseleaders
+ * TODO describe file index
  *
  * @package    local_sync_courseleaders
  * @copyright  2025 Southampton Solent University {@link https://www.solent.ac.uk}
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-defined('MOODLE_INTERNAL') || die();
+require('../../config.php');
 
-$plugin->component    = 'local_sync_courseleaders';
-$plugin->release      = '1.0';
-$plugin->version      = 2025062301;
-$plugin->requires     = 2024100700;
-$plugin->supported    = [405, 500];
-$plugin->maturity     = MATURITY_STABLE;
-$plugin->dependencies = [
-    'enrol_solaissits' => ANY_VERSION,
-];
+require_login();
+
+$url = new moodle_url('/local/sync_courseleaders/index.php', []);
+$PAGE->set_url($url);
+$PAGE->set_context(context_system::instance());
+$PAGE->requires->js_call_amd('local_sync_courseleaders/mapping_actions_bulk', 'init');
+
+$PAGE->set_heading($SITE->fullname);
+echo $OUTPUT->header();
+
+$table = new \local_sync_courseleaders\output\mapping_table('courseleadersync', []);
+
+$table->out(100, false);
+
+echo $OUTPUT->footer();

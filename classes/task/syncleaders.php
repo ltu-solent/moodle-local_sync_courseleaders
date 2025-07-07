@@ -17,6 +17,7 @@
 namespace local_sync_courseleaders\task;
 
 use core\context;
+use core_user;
 
 /**
  * Class syncleaders
@@ -81,6 +82,7 @@ class syncleaders extends \core\task\scheduled_task {
         // This assumes module shortnames end with the academic year and course shortnames do not have underscores.
         // I could use relative categories or the course custom field "pagetype" to be more precise, but that would involve
         // more joins.
+        // I want to exclude "Additional Resources".
 
         $params = [
             'roleid1' => $studentrole->id,
@@ -94,7 +96,7 @@ class syncleaders extends \core\task\scheduled_task {
             'component2' => 'enrol_solaissits',
             'status1active' => ENROL_USER_ACTIVE,
             'c1shortname' => '%\_' . self::get_currentacademicyear(),
-            'c2shortname' => '%\_',
+            'c2shortname' => '%\_%',
         ];
         $records = $DB->get_records_sql($sql, $params);
 
@@ -114,6 +116,7 @@ class syncleaders extends \core\task\scheduled_task {
         // Might be an idea to clear up old mappings.
         $mappings = $DB->get_records('local_sync_courseleaders_map');
         $enrolplugin = enrol_get_plugin('manual');
+        $timeend = time() + (60 * 60 * 24 * 547); // 18 months.
         foreach ($mappings as $mapping) {
             $course = $DB->get_record('course', ['shortname' => $mapping->courseshortcode]);
             // Using visibility as a proxy for being templated.
@@ -125,22 +128,42 @@ class syncleaders extends \core\task\scheduled_task {
                 'roleid' => $courseleaderrole->id,
                 'contextid' => context\course::instance($course->id)->id,
             ]);
+            if (count($leaders) == 0) {
+                continue;
+            }
+            $enabled = $mapping->enabled
+                ? get_string('enabled', 'local_sync_courseleaders')
+                : get_string('notenabled', 'local_sync_courseleaders');
+            mtrace(count($leaders) . ' leaders found for mapping ' .
+                $mapping->courseshortcode . ' to ' . $mapping->moduleshortcode . " ($enabled)");
             $instances = enrol_get_instances($module->id, true);
             $manualinstance = array_filter($instances, function($instance) {
                 return $instance->enrol == 'manual';
             });
+            if (count($manualinstance) == 0) {
+                continue;
+            }
             $manualinstance = reset($manualinstance);
+            $modulecontext = context\course::instance($module->id);
             foreach ($leaders as $leader) {
                 // Check if already enrolled as course leader on the module.
                 $exists = $DB->record_exists('role_assignments', [
                     'roleid' => $courseleaderrole->id,
                     'userid' => $leader->userid,
-                    'contextid' => context\course::instance($module->id)->id,
+                    'contextid' => $modulecontext->id,
                 ]);
+                $cl = core_user::get_user($leader->userid);
+                $fullname = core_user::get_fullname($cl);
+                if ($exists && !$mapping->enabled) {
+                    mtrace('- Unenrolling ' . $fullname . ' from ' . $mapping->moduleshortcode);
+                    $enrolplugin->unenrol_user($manualinstance, $leader->userid);
+                    role_unassign($courseleaderrole->id, $leader->userid, $modulecontext->id);
+                }
                 // Do I need to put on an expiry date?
-                if (!$exists) {
+                if (!$exists && $mapping->enabled) {
+                    mtrace('- Enrolling ' . $fullname . ' on ' . $mapping->moduleshortcode);
                     // Doing this as a manual enrolment, so we can suspend later if we want.
-                    $enrolplugin->enrol_user($manualinstance, $leader->userid, $courseleaderrole->id);
+                    $enrolplugin->enrol_user($manualinstance, $leader->userid, $courseleaderrole->id, 0, $timeend);
                 }
             }
         }

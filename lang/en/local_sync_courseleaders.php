@@ -25,5 +25,23 @@
 
 defined('MOODLE_INTERNAL') || die();
 
+$string['course'] = 'Course';
+
+$string['disable'] = 'Disable';
+$string['disableselected'] = 'Disable selected';
+
+$string['enable'] = 'Enable';
+$string['enabled'] = 'Enabled';
+$string['enableselected'] = 'Enable selected';
+
+$string['module'] = 'Module';
+
+$string['notenabled'] = 'Not enabled';
+
 $string['pluginname'] = 'Sync course leaders';
+
+$string['selectitem'] = 'Select mapping: {$a->moduleshortcode} -> {$a->courseshortcode}';
+
 $string['task:syncleaders'] = 'Sync course leaders to modules';
+
+$string['withselectedmappings'] = 'With selected mappings...';
