@@ -104,5 +104,7 @@ final class synctask_test extends \advanced_testcase {
                 'enrolid' => $manual->id,
             ]));
         }
+        // Not really interested in the mtrace output.
+        $this->expectOutputRegex('#Enrolling#');
     }
 }

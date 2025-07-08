@@ -37,9 +37,21 @@ class mapping_table extends sql_table {
      * @param array $filters
      */
     public function __construct($uniqueid, $filters) {
-        global $OUTPUT;
+        global $DB, $OUTPUT;
         parent::__construct($uniqueid);
         $this->set_attribute('id', 'coursemodulemappings_table');
+        $urlparams = [
+            'enabled' => $filters['enabled'],
+        ];
+        // Need to do param gymnastics for multi-dimension arrays.
+        $sc = [];
+        $baseurl = new url('/local/sync_courseleaders/index.php', $urlparams);
+        foreach ($filters['selectedcourses'] as $key => $selectedcourse) {
+            $sc['selectedcourses[' . $key. ']'] = $selectedcourse;
+        }
+        $baseurl->params($sc);
+        $this->define_baseurl($baseurl);
+
         $checkbox = new \core\output\checkbox_toggleall($uniqueid, true, [
             'id' => 'select-all-mappings',
             'name' => 'select-all-mappings',
@@ -50,14 +62,15 @@ class mapping_table extends sql_table {
         ]);
         $columns = [
             'select' => $OUTPUT->render($checkbox),
-            'id' => 'id',
             'module' => new lang_string('module', 'local_sync_courseleaders'),
             'course' => new lang_string('course', 'local_sync_courseleaders'),
             'enabled' => new lang_string('enabled', 'local_sync_courseleaders'),
         ];
         $this->define_columns(array_keys($columns));
         $this->define_headers(array_values($columns));
-        $this->define_baseurl(new url("/local/sync_courseleaders/index.php", []));
+        $this->collapsible(false);
+        $this->sortable(false);
+
         $select = "m.id, m.moduleshortcode, m.courseshortcode, m.enabled,
             module.fullname modulefullname, module.id moduleid,
             course.fullname coursefullname, course.id courseid";
@@ -66,9 +79,39 @@ class mapping_table extends sql_table {
             JOIN {course} course ON course.shortname = m.courseshortcode
         ";
         $where = "1=1";
-        $this->set_sql($select, $from, $where);
+        $params = [];
+        if ($filters['enabled']) {
+            switch($filters['enabled']) {
+                case 'enabled':
+                    $params['enabled'] = 1;
+                    break;
+                case 'disabled':
+                    $params['enabled'] = 0;
+                    break;
+            }
+            $wheres[] = 'm.enabled = :enabled';
+        }
+        if ($filters['selectedcourses']) {
+            [$insql, $inparamscourse] = $DB->get_in_or_equal($filters['selectedcourses'], SQL_PARAMS_NAMED);
+            $scwhere = "course.id $insql";
+            $params += $inparamscourse;
+
+            [$insql, $inparamsmodule] = $DB->get_in_or_equal($filters['selectedcourses'], SQL_PARAMS_NAMED);
+            $wheres[] = "( $scwhere OR module.id $insql )";
+            $params += $inparamsmodule;
+        }
+        if (!empty($wheres)) {
+            $where = join(' AND ', $wheres);
+        }
+        $this->set_sql($select, $from, $where, $params);
     }
 
+    /**
+     * Course column
+     *
+     * @param stdClass $row
+     * @return string
+     */
     public function col_course($row): string {
         $courselink = html_writer::link(
             new url('/course/view.php', ['id' => $row->courseid]),
@@ -82,12 +125,24 @@ class mapping_table extends sql_table {
         return $html;
     }
 
+    /**
+     * Enabled column
+     *
+     * @param stdClass $row
+     * @return string
+     */
     public function col_enabled($row): string {
         return ($row->enabled)
             ? new lang_string('enabled', 'local_sync_courseleaders')
             : new lang_string('notenabled', 'local_sync_courseleaders');
     }
 
+    /**
+     * Module column
+     *
+     * @param stdClass $row
+     * @return string
+     */
     public function col_module($row): string {
         $courselink = html_writer::link(
             new url('/course/view.php', ['id' => $row->moduleid]),
@@ -101,6 +156,12 @@ class mapping_table extends sql_table {
         return $html;
     }
 
+    /**
+     * Multiselect column
+     *
+     * @param stdClass $row
+     * @return string
+     */
     public function col_select($row): string {
         global $OUTPUT;
         $name = 'mapping' . $row->id;
@@ -120,6 +181,11 @@ class mapping_table extends sql_table {
         return $OUTPUT->render($checkbox);
     }
 
+    /**
+     * Data required for multiselect
+     *
+     * @return void
+     */
     public function wrap_html_finish(): void {
         global $OUTPUT;
 

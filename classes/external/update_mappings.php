@@ -30,6 +30,11 @@ use core_external\external_value;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class update_mappings extends external_api {
+    /**
+     * Parameters for updating mappings
+     *
+     * @return external_function_parameters
+     */
     public static function execute_parameters(): external_function_parameters {
         return new external_function_parameters([
             'mappingids' => new external_multiple_structure(new external_value(PARAM_INT, 'Mapping ID')),
@@ -37,7 +42,14 @@ class update_mappings extends external_api {
         ]);
     }
 
-    public static function execute($mappingids, int $enabled) {
+    /**
+     * Update mapping statuses
+     *
+     * @param int[] $mappingids
+     * @param int $enabled
+     * @return array
+     */
+    public static function execute($mappingids, int $enabled): array {
         global $DB;
         $params = self::validate_parameters(self::execute_parameters(),
             [
@@ -55,10 +67,14 @@ class update_mappings extends external_api {
         ];
     }
 
+    /**
+     * Result of updating mappings
+     *
+     * @return external_single_structure
+     */
     public static function execute_returns(): external_single_structure {
         return new external_single_structure([
             'result' => new external_value(PARAM_BOOL, 'The processing result'),
         ]);
     }
-
 }

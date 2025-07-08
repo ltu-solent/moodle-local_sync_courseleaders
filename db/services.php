@@ -35,6 +35,12 @@ $functions = [
         'ajax' => true,
         'capabilities' => 'moodle/site:config',
     ],
+    'local_sync_courseleaders_search_courses' => [
+        'classname' => \local_sync_courseleaders\external\search_courses::class,
+        'description' => 'Search courses',
+        'type' => 'read',
+        'ajax'  => true,
+    ],
 ];
 
 $services = [

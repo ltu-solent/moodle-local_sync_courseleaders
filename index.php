@@ -34,8 +34,29 @@ $PAGE->requires->js_call_amd('local_sync_courseleaders/mapping_actions_bulk', 'i
 $PAGE->set_heading($SITE->fullname);
 echo $OUTPUT->header();
 
-$table = new \local_sync_courseleaders\output\mapping_table('courseleadersync', []);
+$params = [
+    'selectedcourses' => [],
+    'enabled' => '',
+];
 
-$table->out(100, false);
+$resetfilter = optional_param('cancel', null, PARAM_TEXT);
+
+$filterform = new \local_sync_courseleaders\form\mapping_filter_form(null);
+if ($resetfilter) {
+    $filterform->reset();
+}
+if ($filterdata = $filterform->get_data()) {
+    $params['selectedcourses'] = $filterdata->selectedcourses;
+    $params['enabled'] = $filterdata->enabled;
+} else if (!$resetfilter) {
+    $params['selectedcourses'] = optional_param_array('selectedcourses', [], PARAM_INT);
+    $params['enabled'] = optional_param('enabled', '', PARAM_ALPHA);
+}
+
+$filterform->display();
+
+$table = new \local_sync_courseleaders\output\mapping_table('courseleadersync', $params);
+
+$table->out(50, false);
 
 echo $OUTPUT->footer();

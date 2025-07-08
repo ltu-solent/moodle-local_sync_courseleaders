@@ -25,6 +25,8 @@
 
 defined('MOODLE_INTERNAL') || die();
 
+$string['allstatus'] = 'All';
+
 $string['course'] = 'Course';
 
 $string['disable'] = 'Disable';
@@ -34,12 +36,18 @@ $string['enable'] = 'Enable';
 $string['enabled'] = 'Enabled';
 $string['enableselected'] = 'Enable selected';
 
+$string['filtermappings'] = 'Filter mappings';
+
 $string['module'] = 'Module';
 
+$string['noselection'] = 'No selection';
 $string['notenabled'] = 'Not enabled';
 
 $string['pluginname'] = 'Sync course leaders';
 
+$string['resetall'] = 'Reset filters';
+
+$string['selectedcourses'] = 'Selected courses';
 $string['selectitem'] = 'Select mapping: {$a->moduleshortcode} -> {$a->courseshortcode}';
 
 $string['task:syncleaders'] = 'Sync course leaders to modules';
