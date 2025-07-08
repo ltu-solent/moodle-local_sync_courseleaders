@@ -22,24 +22,27 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+use core\output\html_writer;
+use core\url;
+
 require('../../config.php');
+require_once($CFG->libdir . '/adminlib.php');
 
-require_login();
+admin_externalpage_setup('local_sync_courseleaders', '', null, '/local/sync_courseleaders.index.php');
 
-$url = new moodle_url('/local/sync_courseleaders/index.php', []);
+$url = new url('/local/sync_courseleaders/index.php', []);
 $PAGE->set_url($url);
-$PAGE->set_context(context_system::instance());
+$PAGE->set_context(\core\context\system::instance());
 $PAGE->requires->js_call_amd('local_sync_courseleaders/mapping_actions_bulk', 'init');
 
-$PAGE->set_heading($SITE->fullname);
-echo $OUTPUT->header();
-
+$resetfilter = optional_param('cancel', null, PARAM_TEXT);
 $params = [
     'selectedcourses' => [],
     'enabled' => '',
 ];
 
-$resetfilter = optional_param('cancel', null, PARAM_TEXT);
+$PAGE->set_heading(get_string('managecourseleadermappings', 'local_sync_courseleaders'));
+echo $OUTPUT->header();
 
 $filterform = new \local_sync_courseleaders\form\mapping_filter_form(null);
 if ($resetfilter) {
@@ -52,6 +55,8 @@ if ($filterdata = $filterform->get_data()) {
     $params['selectedcourses'] = optional_param_array('selectedcourses', [], PARAM_INT);
     $params['enabled'] = optional_param('enabled', '', PARAM_ALPHA);
 }
+
+echo html_writer::div(get_string('description', 'local_sync_courseleaders'));
 
 $filterform->display();
 

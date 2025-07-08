@@ -29,6 +29,12 @@ $string['allstatus'] = 'All';
 
 $string['course'] = 'Course';
 
+$string['description'] = "<p>This displays a list of all Module/Course mappings where at least one student on a Module
+    is also enrolled on a Course. Any Course leaders on the Course pages will be enrolled on the corresponding Module pages,
+    unless you Disable the mapping.</p>
+    <p>Enrolments are updated via a Scheduled Task (Sync course leaders to modules).
+    If you change the Enabled state, enrolments are updated when the task runs.</p>
+    <p>Search will match either Course or Module.</p>";
 $string['disable'] = 'Disable';
 $string['disableselected'] = 'Disable selected';
 
@@ -38,6 +44,7 @@ $string['enableselected'] = 'Enable selected';
 
 $string['filtermappings'] = 'Filter mappings';
 
+$string['managecourseleadermappings'] = 'Manage course leader mappings to modules';
 $string['module'] = 'Module';
 
 $string['noselection'] = 'No selection';
