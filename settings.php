@@ -26,8 +26,10 @@ use core\url;
 
 defined('MOODLE_INTERNAL') || die();
 
-$ADMIN->add('enrolments', new admin_externalpage('local_sync_courseleaders',
-    get_string('pluginname', 'local_sync_courseleaders'),
-    new url('/local/sync_courseleaders/index.php'),
-    'moodle/site:config')
-);
+if ($hassiteconfig) {
+    $ADMIN->add('enrolments', new admin_externalpage('local_sync_courseleaders',
+        get_string('pluginname', 'local_sync_courseleaders'),
+        new url('/local/sync_courseleaders/index.php'),
+        'moodle/site:config')
+    );
+}
