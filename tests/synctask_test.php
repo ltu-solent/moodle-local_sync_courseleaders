@@ -43,12 +43,14 @@ final class synctask_test extends \advanced_testcase {
     /**
      * Test cours leader enrolments on related modules
      *
+     * @param int $expiry Expiry seconds
      * @return void
      * @covers \local_sync_courseleaders\task\syncleaders
+     * @dataProvider syncleaders_provider
      */
-    public function test_syncleaders_enrols_course_leaders_on_modules_with_solaissits(): void {
+    public function test_syncleaders_enrols_course_leaders_on_modules_with_solaissits(int $expiry): void {
         global $DB;
-
+        set_config('expireenrolment', $expiry, 'local_sync_courseleaders');
         // Create roles.
         $studentrole = $DB->get_record('role', ['shortname' => 'student']);
         $courseleaderroleid = create_role('Course leader', 'courseleader', 'Course leader role');
@@ -86,6 +88,11 @@ final class synctask_test extends \advanced_testcase {
         // Run the task.
         $task = new syncleaders();
         $task->execute();
+        $expireenrolments = get_config('local_sync_courseleaders', 'expireenrolment');
+        $expiredate = date('Y-m-d', 0);
+        if ($expireenrolments > 0) {
+            $expiredate = date('Y-m-d', (time() + $expireenrolments));
+        }
 
         // Now leader should be assigned as courseleader on both modules.
         foreach ([$module1, $module2] as $mod) {
@@ -99,12 +106,40 @@ final class synctask_test extends \advanced_testcase {
                 'userid' => $leader->id,
                 'contextid' => context\course::instance($mod->id)->id,
             ]));
-            $this->assertTrue($DB->record_exists('user_enrolments', [
+            $enrolments = $DB->get_records('user_enrolments', [
                 'userid' => $leader->id,
                 'enrolid' => $manual->id,
-            ]));
+            ]);
+            $enrolment = reset($enrolments);
+            $this->assertCount(1, $enrolments);
+            $this->assertEquals($expiredate, date('Y-m-d', $enrolment->timeend));
         }
         // Not really interested in the mtrace output.
         $this->expectOutputRegex('#Enrolling#');
+    }
+
+    /**
+     * Expiry time frames provider
+     *
+     * @return array
+     */
+    public static function syncleaders_provider(): array {
+        return [
+            'unlimited' => [
+                'expiry' => 0,
+            ],
+            'six months' => [
+                'expiry' => (60 * 60 * 24 * 182),
+            ],
+            'one year' => [
+                'expiry' => (60 * 60 * 24 * 365),
+            ],
+            'eighteen months' => [
+                'expiry' => (60 * 60 * 24 * 547),
+            ],
+            'two years' => [
+                'expiry' => (60 * 60 * 24 * 730),
+            ],
+        ];
     }
 }

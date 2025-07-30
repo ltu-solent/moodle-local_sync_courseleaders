@@ -28,7 +28,7 @@ use core\url;
 require('../../config.php');
 require_once($CFG->libdir . '/adminlib.php');
 
-admin_externalpage_setup('local_sync_courseleaders', '', null, '/local/sync_courseleaders.index.php');
+admin_externalpage_setup('local_sync_courseleaders_index', '', null, '/local/sync_courseleaders.index.php');
 
 $url = new url('/local/sync_courseleaders/index.php', []);
 $PAGE->set_url($url);

@@ -17,6 +17,7 @@
 namespace local_sync_courseleaders\task;
 
 use core\context;
+use core_php_time_limit;
 use core_user;
 
 /**
@@ -43,7 +44,9 @@ class syncleaders extends \core\task\scheduled_task {
      */
     public function execute() {
         global $DB;
-
+        // This may take a long time.
+        core_php_time_limit::raise();
+        raise_memory_limit(MEMORY_HUGE);
         $studentrole = $DB->get_record('role', ['shortname' => 'student']);
         $courseleaderrole = $DB->get_record('role', ['shortname' => 'courseleader']);
         $c1shortnamelike = $DB->sql_like('c1.shortname', ':c1shortname');
@@ -116,7 +119,12 @@ class syncleaders extends \core\task\scheduled_task {
         // Might be an idea to clear up old mappings.
         $mappings = $DB->get_records('local_sync_courseleaders_map');
         $enrolplugin = enrol_get_plugin('manual');
-        $timeend = time() + (60 * 60 * 24 * 547); // 18 months.
+        $expireenrolment = get_config('local_sync_courseleaders', 'expireenrolment') ?? (60 * 60 * 24 * 547); // 18 months.
+        $timeend = 0;
+        if ($expireenrolment > 0) {
+            $timeend = time() + $expireenrolment;
+        }
+
         foreach ($mappings as $mapping) {
             $course = $DB->get_record('course', ['shortname' => $mapping->courseshortcode]);
             // Using visibility as a proxy for being templated.
@@ -159,9 +167,13 @@ class syncleaders extends \core\task\scheduled_task {
                     $enrolplugin->unenrol_user($manualinstance, $leader->userid);
                     role_unassign($courseleaderrole->id, $leader->userid, $modulecontext->id);
                 }
-                // Do I need to put on an expiry date?
+
                 if (!$exists && $mapping->enabled) {
-                    mtrace('- Enrolling ' . $fullname . ' on ' . $mapping->moduleshortcode);
+                    $expirydate = '';
+                    if ($timeend > 0) {
+                        $expirydate = ' and will expire on ' . date('Y-m-d', $timeend);
+                    }
+                    mtrace('- Enrolling ' . $fullname . ' on ' . $mapping->moduleshortcode . $expirydate);
                     // Doing this as a manual enrolment, so we can suspend later if we want.
                     $enrolplugin->enrol_user($manualinstance, $leader->userid, $courseleaderrole->id, 0, $timeend);
                 }

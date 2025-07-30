@@ -41,12 +41,15 @@ $string['disableselected'] = 'Disable selected';
 $string['enable'] = 'Enable';
 $string['enabled'] = 'Enabled';
 $string['enableselected'] = 'Enable selected';
+$string['expireenrolments'] = 'Expire enrolments';
+$string['expireenrolments_desc'] = 'How long should the enrolment last. Expiry date is calculated when the enrolment is created, and can be altered after the fact.';
 
 $string['filtermappings'] = 'Filter mappings';
 
 $string['managecourseleadermappings'] = 'Manage course leader mappings to modules';
 $string['module'] = 'Module';
 
+$string['neverexpire'] = 'Never expire';
 $string['noselection'] = 'No selection';
 $string['notenabled'] = 'Not enabled';
 

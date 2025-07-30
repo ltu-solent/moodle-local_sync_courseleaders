@@ -22,14 +22,31 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+use core\lang_string;
 use core\url;
 
 defined('MOODLE_INTERNAL') || die();
 
+$settings = new admin_settingpage('local_sync_courseleaders', new lang_string('pluginname', 'local_sync_courseleaders'));
 if ($hassiteconfig) {
-    $ADMIN->add('enrolments', new admin_externalpage('local_sync_courseleaders',
+    $ADMIN->add('enrolments', new admin_externalpage('local_sync_courseleaders_index',
         get_string('pluginname', 'local_sync_courseleaders'),
         new url('/local/sync_courseleaders/index.php'),
         'moodle/site:config')
     );
+
+    $settings->add(new admin_setting_configselect(
+        'local_sync_courseleaders/expireenrolment',
+        new lang_string('expireenrolments', 'local_sync_courseleaders'),
+        new lang_string('expireenrolments_desc', 'local_sync_courseleaders'),
+        (60 * 60 * 24 * 547),
+        [
+            0   => new lang_string('neverexpire', 'local_sync_courseleaders'),
+            (60 * 60 * 24 * 182) => new lang_string('numdays', '', 182), // 6 months.
+            (60 * 60 * 24 * 365) => new lang_string('numdays', '', 365), // 1 year.
+            (60 * 60 * 24 * 547) => new lang_string('numdays', '', 547), // 18 months.
+            (60 * 60 * 24 * 730) => new lang_string('numdays', '', 730), // 2 years.
+        ]
+    ));
+    $ADMIN->add('localplugins', $settings);
 }
