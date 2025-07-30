@@ -60,13 +60,15 @@ final class synctask_test extends \advanced_testcase {
         $leader = $this->getDataGenerator()->create_user();
 
         // Create courses: one course, two modules.
+        $currentacademicyear = syncleaders::get_currentacademicyear();
         $course = $this->getDataGenerator()->create_course(['shortname' => 'COURSE']);
-        $module1 = $this->getDataGenerator()->create_course(['shortname' => 'MOD101_2024/25']);
-        $module2 = $this->getDataGenerator()->create_course(['shortname' => 'MOD102_2024/25']);
+        $module1 = $this->getDataGenerator()->create_course(['shortname' => 'MOD101_' . $currentacademicyear]);
+        $module2 = $this->getDataGenerator()->create_course(['shortname' => 'MOD102_' . $currentacademicyear]);
+        $oldmodule = $this->getDataGenerator()->create_course(['shortname' => 'MOD101_2022/23']);
 
         // Add enrol_solaissits instances to all courses.
         $enrolplugin = enrol_get_plugin('solaissits');
-        foreach ([$course, $module1, $module2] as $c) {
+        foreach ([$course, $module1, $module2, $oldmodule] as $c) {
             $enrolid = $enrolplugin->add_instance($c, ['status' => ENROL_INSTANCE_ENABLED, 'name' => 'solaissits']);
             $enrolinstance = $DB->get_record('enrol', ['id' => $enrolid]);
             // Enrol student via solaissits.
@@ -77,7 +79,7 @@ final class synctask_test extends \advanced_testcase {
         role_assign($courseleaderroleid, $leader->id, context\course::instance($course->id));
 
         // Ensure leader is not assigned on modules.
-        foreach ([$module1, $module2] as $mod) {
+        foreach ([$module1, $module2, $oldmodule] as $mod) {
             $this->assertFalse($DB->record_exists('role_assignments', [
                 'roleid' => $courseleaderroleid,
                 'userid' => $leader->id,
@@ -114,6 +116,18 @@ final class synctask_test extends \advanced_testcase {
             $this->assertCount(1, $enrolments);
             $this->assertEquals($expiredate, date('Y-m-d', $enrolment->timeend));
         }
+
+        // The old module should not have any enrolments.
+        $instances = enrol_get_instances($oldmodule->id, true);
+        $manual = array_filter($instances, function($instance) {
+            return $instance->enrol == 'manual';
+        });
+        $manual = reset($manual);
+        $this->assertFalse($DB->record_exists('role_assignments', [
+            'roleid' => $courseleaderroleid,
+            'userid' => $leader->id,
+            'contextid' => context\course::instance($oldmodule->id)->id,
+        ]));
         // Not really interested in the mtrace output.
         $this->expectOutputRegex('#Enrolling#');
     }
