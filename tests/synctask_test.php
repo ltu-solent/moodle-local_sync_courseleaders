@@ -27,6 +27,7 @@ use enrol_manual_plugin;
  * @category   test
  * @copyright  2025 Southampton Solent University {@link https://www.solent.ac.uk}
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @covers \local_sync_courseleaders\task\syncleaders
  */
 final class synctask_test extends \advanced_testcase {
 
@@ -45,7 +46,6 @@ final class synctask_test extends \advanced_testcase {
      *
      * @param int $expiry Expiry seconds
      * @return void
-     * @covers \local_sync_courseleaders\task\syncleaders
      * @dataProvider syncleaders_provider
      */
     public function test_syncleaders_enrols_course_leaders_on_modules_with_solaissits(int $expiry): void {
@@ -128,6 +128,7 @@ final class synctask_test extends \advanced_testcase {
             'userid' => $leader->id,
             'contextid' => context\course::instance($oldmodule->id)->id,
         ]));
+
         // Not really interested in the mtrace output.
         $this->expectOutputRegex('#Enrolling#');
     }
@@ -155,5 +156,82 @@ final class synctask_test extends \advanced_testcase {
                 'expiry' => (60 * 60 * 24 * 730),
             ],
         ];
+    }
+
+    /**
+     * Check disabled mappings unenrol users
+     *
+     * @return void
+     */
+    public function test_disable_mapping(): void {
+        global $DB;
+        set_config('expireenrolment', 0, 'local_sync_courseleaders');
+        // Create roles.
+        $studentrole = $DB->get_record('role', ['shortname' => 'student']);
+        $courseleaderroleid = create_role('Course leader', 'courseleader', 'Course leader role');
+
+        // Create users.
+        $student = $this->getDataGenerator()->create_user();
+        $leader = $this->getDataGenerator()->create_user();
+
+        // Create courses: one course, two modules.
+        $currentacademicyear = syncleaders::get_currentacademicyear();
+        $course = $this->getDataGenerator()->create_course(['shortname' => 'COURSE']);
+        $module1 = $this->getDataGenerator()->create_course(['shortname' => 'MOD101_' . $currentacademicyear]);
+        $module2 = $this->getDataGenerator()->create_course(['shortname' => 'MOD102_' . $currentacademicyear]);
+
+        // Add enrol_solaissits instances to all courses.
+        $enrolplugin = enrol_get_plugin('solaissits');
+        foreach ([$course, $module1, $module2] as $c) {
+            $enrolid = $enrolplugin->add_instance($c, ['status' => ENROL_INSTANCE_ENABLED, 'name' => 'solaissits']);
+            $enrolinstance = $DB->get_record('enrol', ['id' => $enrolid]);
+            // Enrol student via solaissits.
+            $enrolplugin->enrol_user($enrolinstance, $student->id, $studentrole->id);
+        }
+
+        // Assign course leader role on course.
+        role_assign($courseleaderroleid, $leader->id, context\course::instance($course->id));
+
+        // Run the task to create the mappings.
+        $task = new syncleaders();
+        $task->execute();
+
+        $instances = enrol_get_instances($module1->id, true);
+        $manual = array_filter($instances, function($instance) {
+            return $instance->enrol == 'manual';
+        });
+        $manual = reset($manual);
+        $this->assertTrue($DB->record_exists('role_assignments', [
+            'roleid' => $courseleaderroleid,
+            'userid' => $leader->id,
+            'contextid' => context\course::instance($module1->id)->id,
+        ]));
+        $enrolments = $DB->get_records('user_enrolments', [
+            'userid' => $leader->id,
+            'enrolid' => $manual->id,
+        ]);
+        $this->assertCount(1, $enrolments);
+
+        $disablethis = $DB->get_record('local_sync_courseleaders_map', [
+            'moduleshortcode' => 'MOD101_' . $currentacademicyear,
+            'courseshortcode' => 'COURSE',
+        ]);
+        $disablethis->enabled = 0;
+        $DB->update_record('local_sync_courseleaders_map', $disablethis);
+        $task->execute();
+
+        $this->assertFalse($DB->record_exists('role_assignments', [
+            'roleid' => $courseleaderroleid,
+            'userid' => $leader->id,
+            'contextid' => context\course::instance($module1->id)->id,
+        ]));
+        $enrolments = $DB->get_records('user_enrolments', [
+            'userid' => $leader->id,
+            'enrolid' => $manual->id,
+        ]);
+        $this->assertCount(0, $enrolments);
+
+        $expected = '#Unenrolling ' . $leader->firstname . ' ' . $leader->lastname . ' from MOD101_' . $currentacademicyear . '#';
+        $this->expectOutputRegex($expected);
     }
 }
