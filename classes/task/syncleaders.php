@@ -161,6 +161,9 @@ class syncleaders extends \core\task\scheduled_task {
                     'contextid' => $modulecontext->id,
                 ]);
                 $cl = core_user::get_user($leader->userid);
+                if (!$cl) {
+                    continue;
+                }
                 $fullname = core_user::get_fullname($cl);
                 if ($raexists && !$mapping->enabled) {
                     mtrace('- Unenrolling ' . $fullname . ' from ' . $mapping->moduleshortcode);
