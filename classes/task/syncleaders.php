@@ -155,20 +155,20 @@ class syncleaders extends \core\task\scheduled_task {
             $modulecontext = context\course::instance($module->id);
             foreach ($leaders as $leader) {
                 // Check if already enrolled as course leader on the module.
-                $exists = $DB->record_exists('role_assignments', [
+                $raexists = $DB->record_exists('role_assignments', [
                     'roleid' => $courseleaderrole->id,
                     'userid' => $leader->userid,
                     'contextid' => $modulecontext->id,
                 ]);
                 $cl = core_user::get_user($leader->userid);
                 $fullname = core_user::get_fullname($cl);
-                if ($exists && !$mapping->enabled) {
+                if ($raexists && !$mapping->enabled) {
                     mtrace('- Unenrolling ' . $fullname . ' from ' . $mapping->moduleshortcode);
                     $enrolplugin->unenrol_user($manualinstance, $leader->userid);
                     role_unassign($courseleaderrole->id, $leader->userid, $modulecontext->id);
                 }
 
-                if (!$exists && $mapping->enabled) {
+                if (!$raexists && $mapping->enabled) {
                     $expirydate = '';
                     if ($timeend > 0) {
                         $expirydate = ' and will expire on ' . date('Y-m-d', $timeend);
