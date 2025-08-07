@@ -165,13 +165,15 @@ class syncleaders extends \core\task\scheduled_task {
                     continue;
                 }
                 $fullname = core_user::get_fullname($cl);
-                if ($raexists && !$mapping->enabled) {
+                // If the mapping is not enabled or the user is suspended unenrol them, if enrolled.
+                if ($raexists && (!$mapping->enabled || $cl->suspended)) {
                     mtrace('- Unenrolling ' . $fullname . ' from ' . $mapping->moduleshortcode);
                     $enrolplugin->unenrol_user($manualinstance, $leader->userid);
                     role_unassign($courseleaderrole->id, $leader->userid, $modulecontext->id);
                 }
 
-                if (!$raexists && $mapping->enabled) {
+                // Only enrol if not already enrolled and if the user's account is not suspended and the mapping is allowed.
+                if (!$raexists && $mapping->enabled && !$cl->suspended) {
                     $expirydate = '';
                     if ($timeend > 0) {
                         $expirydate = ' and will expire on ' . date('Y-m-d', $timeend);
