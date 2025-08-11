@@ -28,6 +28,20 @@ use core_user;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class syncleaders extends \core\task\scheduled_task {
+
+    /**
+     * Student role
+     *
+     * @var stdClass
+     */
+    private $studentrole;
+
+    /**
+     * Course leader role
+     *
+     * @var stdClass
+     */
+    private $courseleaderrole;
     /**
      * Get task name
      *
@@ -47,11 +61,22 @@ class syncleaders extends \core\task\scheduled_task {
         // This may take a long time.
         core_php_time_limit::raise();
         raise_memory_limit(MEMORY_HUGE);
-        $studentrole = $DB->get_record('role', ['shortname' => 'student']);
-        $courseleaderrole = $DB->get_record('role', ['shortname' => 'courseleader']);
+        $this->studentrole = $DB->get_record('role', ['shortname' => 'student']);
+        $this->courseleaderrole = $DB->get_record('role', ['shortname' => 'courseleader']);
+        $this->update_mappings();
+        $this->process_enrolments();
+    }
+
+    /**
+     * Build mapping table from student enrolments.
+     *
+     * @return void
+     */
+    private function update_mappings() {
+        global $DB;
+
         $c1shortnamelike = $DB->sql_like('c1.shortname', ':c1shortname');
         $c2shortnamenotlike = $DB->sql_like('c2.shortname', ':c2shortname', false, false, true);
-        // 1. Build mapping table from student enrolments.
         // For Moodle, must have a distinct first field as this is the key.
         $sql = "SELECT DISTINCT(CONCAT(c1.shortname, '|', c2.shortname)) id,
                     c1.shortname AS moduleshortcode, c2.shortname AS courseshortcode
@@ -88,14 +113,14 @@ class syncleaders extends \core\task\scheduled_task {
         // I want to exclude "Additional Resources".
 
         $params = [
-            'roleid1' => $studentrole->id,
+            'roleid1' => $this->studentrole->id,
             'enrol1' => 'solaissits',
             'context1' => CONTEXT_COURSE,
             'component1' => 'enrol_solaissits',
             'status2active' => ENROL_USER_ACTIVE,
             'enrol2' => 'solaissits',
             'context2' => CONTEXT_COURSE,
-            'roleid2' => $studentrole->id,
+            'roleid2' => $this->studentrole->id,
             'component2' => 'enrol_solaissits',
             'status1active' => ENROL_USER_ACTIVE,
             'c1shortname' => '%\_' . self::get_currentacademicyear(),
@@ -113,8 +138,15 @@ class syncleaders extends \core\task\scheduled_task {
                 $DB->insert_record('local_sync_courseleaders_map', $pair, false, true);
             }
         }
+    }
 
-        // 2. For each mapping, enrol course leaders on modules.
+    /**
+     * For each mapping, enrol course leaders on modules (or remove them).
+     *
+     * @return void
+     */
+    private function process_enrolments() {
+        global $DB;
         // Do I want to go through all mappings ever?
         // Might be an idea to clear up old mappings.
         $mappings = $DB->get_records('local_sync_courseleaders_map');
@@ -133,7 +165,7 @@ class syncleaders extends \core\task\scheduled_task {
                 continue;
             }
             $leaders = $DB->get_records('role_assignments', [
-                'roleid' => $courseleaderrole->id,
+                'roleid' => $this->courseleaderrole->id,
                 'contextid' => context\course::instance($course->id)->id,
             ]);
             if (count($leaders) == 0) {
@@ -156,7 +188,7 @@ class syncleaders extends \core\task\scheduled_task {
             foreach ($leaders as $leader) {
                 // Check if already enrolled as course leader on the module.
                 $raexists = $DB->record_exists('role_assignments', [
-                    'roleid' => $courseleaderrole->id,
+                    'roleid' => $this->courseleaderrole->id,
                     'userid' => $leader->userid,
                     'contextid' => $modulecontext->id,
                 ]);
@@ -169,7 +201,7 @@ class syncleaders extends \core\task\scheduled_task {
                 if ($raexists && (!$mapping->enabled || $cl->suspended)) {
                     mtrace('- Unenrolling ' . $fullname . ' from ' . $mapping->moduleshortcode);
                     $enrolplugin->unenrol_user($manualinstance, $leader->userid);
-                    role_unassign($courseleaderrole->id, $leader->userid, $modulecontext->id);
+                    role_unassign($this->courseleaderrole->id, $leader->userid, $modulecontext->id);
                 }
 
                 // Only enrol if not already enrolled and if the user's account is not suspended and the mapping is allowed.
@@ -180,7 +212,7 @@ class syncleaders extends \core\task\scheduled_task {
                     }
                     mtrace('- Enrolling ' . $fullname . ' on ' . $mapping->moduleshortcode . $expirydate);
                     // Doing this as a manual enrolment, so we can suspend later if we want.
-                    $enrolplugin->enrol_user($manualinstance, $leader->userid, $courseleaderrole->id, 0, $timeend);
+                    $enrolplugin->enrol_user($manualinstance, $leader->userid, $this->courseleaderrole->id, 0, $timeend);
                 }
             }
         }
