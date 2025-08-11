@@ -75,6 +75,12 @@ class syncleaders extends \core\task\scheduled_task {
     private function update_mappings() {
         global $DB;
 
+        // Remove old mappings. We're only keeping the current year. This doesn't delete any current enrolments.
+        $moduleshortnamenotlike = $DB->sql_like('moduleshortcode', ':moduleshortcode', false, false, true);
+        $DB->delete_records_select('local_sync_courseleaders_map', $moduleshortnamenotlike, [
+            'moduleshortcode' => '%\_' . self::get_currentacademicyear(),
+        ]);
+
         $c1shortnamelike = $DB->sql_like('c1.shortname', ':c1shortname');
         $c2shortnamenotlike = $DB->sql_like('c2.shortname', ':c2shortname', false, false, true);
         // For Moodle, must have a distinct first field as this is the key.

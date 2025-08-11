@@ -307,4 +307,36 @@ final class synctask_test extends \advanced_testcase {
         $expected = '#Unenrolling ' . $leader->firstname . ' ' . $leader->lastname . ' from MOD101_' . $currentacademicyear . '#';
         $this->expectOutputRegex($expected);
     }
+
+    /**
+     * Remove mappings where the module code doesn't match the current academic year.
+     *
+     * @return void
+     */
+    public function test_remove_mappings(): void {
+        global $DB;
+        $this->resetAfterTest();
+        $task = new syncleaders();
+        $currentacademicyear = $task->get_currentacademicyear();
+        $currentyearstart = explode('/', $currentacademicyear)[0];
+        $startyears = range($currentyearstart - 5, $currentyearstart);
+
+        $mappings = [];
+        foreach ($startyears as $year) {
+            for ($x = 0; $x < 5; $x++) {
+                $mappings[] = [
+                    // MOD400_2024/25.
+                    'moduleshortcode' => 'MOD40' . $x .'_' . $year . '/' . (substr($year + 1, 2, 2)),
+                    'courseshortcode' => 'XXCOURSECODE',
+                ];
+            }
+        }
+        $DB->insert_records('local_sync_courseleaders_map', $mappings);
+        // Should expect 5 years * 5 module mappings.
+        $this->assertCount(count($mappings), $DB->get_records('local_sync_courseleaders_map'));
+        // Run the task to remove the old mappings.
+        $task->execute();
+        // Should only be 5 module mappings left for the current year.
+        $this->assertCount(5, $DB->get_records('local_sync_courseleaders_map'));
+    }
 }
