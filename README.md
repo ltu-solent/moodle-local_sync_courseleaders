@@ -1,5 +1,8 @@
 # Sync course leaders
 
+[![Moodle Plugin CI](https://github.com/ltu-solent/moodle-local_sync_courseleaders/actions/workflows/moodle-ci.yml/badge.svg)](https://github.com/ltu-solent/moodle-local_sync_courseleaders/actions/workflows/moodle-ci.yml)
+[![Moodle PHPStan CI](https://github.com/ltu-solent/moodle-local_sync_courseleaders/actions/workflows/phpstan-ci.yml/badge.svg)](https://github.com/ltu-solent/moodle-local_sync_courseleaders/actions/workflows/phpstan-ci.yml) 
+
 ## Purpose
 
 Course leaders are enrolled on course pages (pagetype=course), but they might not be enrolled on the modules (pagetype=module) that relate to those courses.
