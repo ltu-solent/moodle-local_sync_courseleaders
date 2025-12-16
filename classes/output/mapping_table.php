@@ -227,4 +227,3 @@ class mapping_table extends sql_table {
         echo $OUTPUT->render_from_template('local_sync_courseleaders/bulk_action_menu', $data);
     }
 }
-
