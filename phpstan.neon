@@ -1,0 +1,6 @@
+includes:
+    - ../../vendor/micaherne/phpstan-moodle/extension.neon
+parameters:
+    level: 5
+    moodle:
+        rootDirectory: %currentWorkingDirectory%
