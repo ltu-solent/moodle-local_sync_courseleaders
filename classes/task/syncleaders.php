@@ -183,7 +183,7 @@ class syncleaders extends \core\task\scheduled_task {
             mtrace(count($leaders) . ' leaders found for mapping ' .
                 $mapping->courseshortcode . ' to ' . $mapping->moduleshortcode . " ($enabled)");
             $instances = enrol_get_instances($module->id, true);
-            $manualinstance = array_filter($instances, function($instance) {
+            $manualinstance = array_filter($instances, function ($instance) {
                 return $instance->enrol == 'manual';
             });
             if (count($manualinstance) == 0) {
