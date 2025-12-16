@@ -27,7 +27,6 @@ use moodleform;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class mapping_filter_form extends moodleform {
-
     /**
      * Form definition
      *
@@ -41,16 +40,16 @@ class mapping_filter_form extends moodleform {
             'multiple' => true,
             'noselectionstring' => get_string('noselection', 'local_sync_courseleaders'),
             'ajax' => 'local_sync_courseleaders/form-course-selector',
-            'valuehtmlcallback' => function($value) {
+            'valuehtmlcallback' => function ($value) {
                 global $DB;
                 $course = $DB->get_record('course', ['id' => $value]);
                 return $course->shortname . ': ' . $course->fullname;
             },
         ];
-        $mform->addElement('autocomplete',
+        $mform->addElement(
+            'autocomplete',
             'selectedcourses',
-            new lang_string('selectedcourses',
-            'local_sync_courseleaders'),
+            new lang_string('selectedcourses', 'local_sync_courseleaders'),
             [],
             $options
         );
@@ -77,6 +76,6 @@ class mapping_filter_form extends moodleform {
      * @return void
      */
     public function reset() {
-        $this->_form->updateSubmission(null, null);
+        $this->_form->updateSubmission([], []);
     }
 }

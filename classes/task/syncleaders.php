@@ -19,6 +19,7 @@ namespace local_sync_courseleaders\task;
 use core\context;
 use core_php_time_limit;
 use core_user;
+use stdClass;
 
 /**
  * Class syncleaders
@@ -28,7 +29,6 @@ use core_user;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class syncleaders extends \core\task\scheduled_task {
-
     /**
      * Student role
      *

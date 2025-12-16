@@ -28,11 +28,16 @@ use core\url;
 defined('MOODLE_INTERNAL') || die();
 
 $settings = new admin_settingpage('local_sync_courseleaders', new lang_string('pluginname', 'local_sync_courseleaders'));
+/* @phpstan-ignore variable.undefined */
 if ($hassiteconfig) {
-    $ADMIN->add('enrolments', new admin_externalpage('local_sync_courseleaders_index',
-        get_string('pluginname', 'local_sync_courseleaders'),
-        new url('/local/sync_courseleaders/index.php'),
-        'moodle/site:config')
+    $ADMIN->add(
+        'enrolments',
+        new admin_externalpage(
+            'local_sync_courseleaders_index',
+            get_string('pluginname', 'local_sync_courseleaders'),
+            new url('/local/sync_courseleaders/index.php'),
+            'moodle/site:config'
+        )
     );
 
     $settings->add(new admin_setting_configselect(

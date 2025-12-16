@@ -51,7 +51,8 @@ class update_mappings extends external_api {
      */
     public static function execute($mappingids, int $enabled): array {
         global $DB;
-        $params = self::validate_parameters(self::execute_parameters(),
+        $params = self::validate_parameters(
+            self::execute_parameters(),
             [
                 'mappingids' => $mappingids,
                 'enabled' => $enabled,

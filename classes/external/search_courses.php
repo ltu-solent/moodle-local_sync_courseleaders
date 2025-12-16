@@ -51,7 +51,8 @@ class search_courses extends external_api {
      */
     public static function execute($query, $enabled): array {
         global $DB;
-        $params = self::validate_parameters(self::execute_parameters(),
+        $params = self::validate_parameters(
+            self::execute_parameters(),
             [
                 'query' => $query,
                 'enabled' => $enabled,

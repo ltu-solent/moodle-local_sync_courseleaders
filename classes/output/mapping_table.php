@@ -47,7 +47,7 @@ class mapping_table extends sql_table {
         $sc = [];
         $baseurl = new url('/local/sync_courseleaders/index.php', $urlparams);
         foreach ($filters['selectedcourses'] as $key => $selectedcourse) {
-            $sc['selectedcourses[' . $key. ']'] = $selectedcourse;
+            $sc['selectedcourses[' . $key . ']'] = $selectedcourse;
         }
         $baseurl->params($sc);
         $this->define_baseurl($baseurl);
@@ -81,7 +81,7 @@ class mapping_table extends sql_table {
         $where = "1=1";
         $params = [];
         if ($filters['enabled']) {
-            switch($filters['enabled']) {
+            switch ($filters['enabled']) {
                 case 'enabled':
                     $params['enabled'] = 1;
                     break;
@@ -191,7 +191,7 @@ class mapping_table extends sql_table {
 
         $data = new stdClass();
         $data->showbulkactions = true;
-
+        /* @phpstan-ignore if.alwaysTrue */
         if ($data->showbulkactions) {
             $data->id = 'courseleadersmappingsbulkactions';
             $data->attributes = [

@@ -32,6 +32,13 @@ jobs:
         with:
           path: ./local/sync_courseleaders
 
+      - name: Checkout enrol_solaissits plugin
+        uses: actions/checkout@v4
+        with:
+          repository: 'ltu-solent/moodle-enrol_solaissits'
+          path: ./enrol/solaissits
+          ref: 'MOODLE_405_STABLE'
+
       - name: Setup PHP ${{ matrix.php }}
         uses: shivammathur/setup-php@v2
         with:

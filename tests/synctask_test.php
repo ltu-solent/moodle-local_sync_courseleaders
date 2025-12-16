@@ -30,7 +30,6 @@ use enrol_manual_plugin;
  * @covers \local_sync_courseleaders\task\syncleaders
  */
 final class synctask_test extends \advanced_testcase {
-
     /**
      * Reset DB after test
      *
@@ -67,6 +66,7 @@ final class synctask_test extends \advanced_testcase {
         $oldmodule = $this->getDataGenerator()->create_course(['shortname' => 'MOD101_2022/23']);
 
         // Add enrol_solaissits instances to all courses.
+        /** @var \enrol_solaissits_plugin $enrolplugin */
         $enrolplugin = enrol_get_plugin('solaissits');
         foreach ([$course, $module1, $module2, $oldmodule] as $c) {
             $enrolid = $enrolplugin->add_instance($c, ['status' => ENROL_INSTANCE_ENABLED, 'name' => 'solaissits']);
@@ -99,7 +99,7 @@ final class synctask_test extends \advanced_testcase {
         // Now leader should be assigned as courseleader on both modules.
         foreach ([$module1, $module2] as $mod) {
             $instances = enrol_get_instances($mod->id, true);
-            $manual = array_filter($instances, function($instance) {
+            $manual = array_filter($instances, function ($instance) {
                 return $instance->enrol == 'manual';
             });
             $manual = reset($manual);
@@ -119,7 +119,7 @@ final class synctask_test extends \advanced_testcase {
 
         // The old module should not have any enrolments.
         $instances = enrol_get_instances($oldmodule->id, true);
-        $manual = array_filter($instances, function($instance) {
+        $manual = array_filter($instances, function ($instance) {
             return $instance->enrol == 'manual';
         });
         $manual = reset($manual);
@@ -197,7 +197,7 @@ final class synctask_test extends \advanced_testcase {
         $task->execute();
 
         $instances = enrol_get_instances($module1->id, true);
-        $manual = array_filter($instances, function($instance) {
+        $manual = array_filter($instances, function ($instance) {
             return $instance->enrol == 'manual';
         });
         $manual = reset($manual);
@@ -274,7 +274,7 @@ final class synctask_test extends \advanced_testcase {
         $task->execute();
 
         $instances = enrol_get_instances($module1->id, true);
-        $manual = array_filter($instances, function($instance) {
+        $manual = array_filter($instances, function ($instance) {
             return $instance->enrol == 'manual';
         });
         $manual = reset($manual);
@@ -319,14 +319,14 @@ final class synctask_test extends \advanced_testcase {
         $task = new syncleaders();
         $currentacademicyear = $task->get_currentacademicyear();
         $currentyearstart = explode('/', $currentacademicyear)[0];
-        $startyears = range($currentyearstart - 5, $currentyearstart);
+        $startyears = range((int)$currentyearstart - 5, (int)$currentyearstart);
 
         $mappings = [];
         foreach ($startyears as $year) {
             for ($x = 0; $x < 5; $x++) {
                 $mappings[] = [
                     // MOD400_2024/25.
-                    'moduleshortcode' => 'MOD40' . $x .'_' . $year . '/' . (substr($year + 1, 2, 2)),
+                    'moduleshortcode' => 'MOD40' . $x . '_' . $year . '/' . (substr((string)((int)$year + 1), 2, 2)),
                     'courseshortcode' => 'XXCOURSECODE',
                 ];
             }
