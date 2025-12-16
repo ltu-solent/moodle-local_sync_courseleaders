@@ -30,7 +30,7 @@ jobs:
       - name: Check out repository code
         uses: actions/checkout@v4
         with:
-          path: plugin
+          path: ./local/sync_courseleaders
 
       - name: Setup PHP ${{ matrix.php }}
         uses: shivammathur/setup-php@v2
@@ -51,4 +51,4 @@ jobs:
       - name: Run PHPStan on plugin
         run: |
           # Run PHPStan
-          vendor/bin/phpstan analyse plugin -c plugin/phpstan.neon
+          vendor/bin/phpstan analyse local/sync_courseleaders -c local/sync_courseleaders/phpstan.neon
