@@ -64,11 +64,12 @@ final class synctask_test extends \advanced_testcase {
         $module1 = $this->getDataGenerator()->create_course(['shortname' => 'MOD101_' . $currentacademicyear]);
         $module2 = $this->getDataGenerator()->create_course(['shortname' => 'MOD102_' . $currentacademicyear]);
         $oldmodule = $this->getDataGenerator()->create_course(['shortname' => 'MOD101_2022/23']);
+        $excludedmodule = $this->getDataGenerator()->create_course(['shortname' => 'MOD103_' . $currentacademicyear]);
 
         // Add enrol_solaissits instances to all courses.
         /** @var \enrol_solaissits_plugin $enrolplugin */
         $enrolplugin = enrol_get_plugin('solaissits');
-        foreach ([$course, $module1, $module2, $oldmodule] as $c) {
+        foreach ([$course, $module1, $module2, $oldmodule, $excludedmodule] as $c) {
             $enrolid = $enrolplugin->add_instance($c, ['status' => ENROL_INSTANCE_ENABLED, 'name' => 'solaissits']);
             $enrolinstance = $DB->get_record('enrol', ['id' => $enrolid]);
             // Enrol student via solaissits.
@@ -79,13 +80,15 @@ final class synctask_test extends \advanced_testcase {
         role_assign($courseleaderroleid, $leader->id, context\course::instance($course->id));
 
         // Ensure leader is not assigned on modules.
-        foreach ([$module1, $module2, $oldmodule] as $mod) {
+        foreach ([$module1, $module2, $oldmodule, $excludedmodule] as $mod) {
             $this->assertFalse($DB->record_exists('role_assignments', [
                 'roleid' => $courseleaderroleid,
                 'userid' => $leader->id,
                 'contextid' => context\course::instance($mod->id)->id,
             ]));
         }
+
+        set_config('excludeshortname', $excludedmodule->shortname, 'local_sync_courseleaders');
 
         // Run the task.
         $task = new syncleaders();
@@ -127,6 +130,18 @@ final class synctask_test extends \advanced_testcase {
             'roleid' => $courseleaderroleid,
             'userid' => $leader->id,
             'contextid' => context\course::instance($oldmodule->id)->id,
+        ]));
+
+        // The excluded module should not have any enrolments.
+        $instances = enrol_get_instances($excludedmodule->id, true);
+        $manual = array_filter($instances, function ($instance) {
+            return $instance->enrol == 'manual';
+        });
+        $manual = reset($manual);
+        $this->assertFalse($DB->record_exists('role_assignments', [
+            'roleid' => $courseleaderroleid,
+            'userid' => $leader->id,
+            'contextid' => context\course::instance($excludedmodule->id)->id,
         ]));
 
         // Not really interested in the mtrace output.
@@ -338,5 +353,42 @@ final class synctask_test extends \advanced_testcase {
         $task->execute();
         // Should only be 5 module mappings left for the current year.
         $this->assertCount(5, $DB->get_records('local_sync_courseleaders_map'));
+    }
+
+    /**
+     * If any excluded shortnames are included in the mappings, they will be removed.
+     *
+     * @return void
+     */
+    public function test_remove_excluded_shortnames(): void {
+        global $DB;
+        $this->resetAfterTest();
+        $task = new syncleaders();
+        $currentacademicyear = $task->get_currentacademicyear();
+        $exclude = [
+            'ABC101_' . $currentacademicyear,
+            'Someother_page',
+        ];
+        $mappings = [
+            [
+                'moduleshortcode' => 'ABC101_' . $currentacademicyear,
+                'courseshortcode' => 'XXCOURSECODE',
+            ],
+            [
+                'moduleshortcode' => 'Someother_page',
+                'courseshortcode' => 'XXCOURSECODE',
+            ],
+            [
+                'moduleshortcode' => 'ABC102_' . $currentacademicyear,
+                'courseshortcode' => 'XXCOURSECODE',
+            ],
+        ];
+        set_config('excludeshortname', implode(',', $exclude), 'local_sync_courseleaders');
+        $DB->insert_records('local_sync_courseleaders_map', $mappings);
+        $this->assertCount(count($mappings), $DB->get_records('local_sync_courseleaders_map'));
+        // Run the task to remove the old mappings.
+        $task->execute();
+        // Should only be 1 module mappings left for the current year.
+        $this->assertCount(1, $DB->get_records('local_sync_courseleaders_map'));
     }
 }

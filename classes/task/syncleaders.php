@@ -63,6 +63,7 @@ class syncleaders extends \core\task\scheduled_task {
         raise_memory_limit(MEMORY_HUGE);
         $this->studentrole = $DB->get_record('role', ['shortname' => 'student']);
         $this->courseleaderrole = $DB->get_record('role', ['shortname' => 'courseleader']);
+        $this->remove_old_mappings();
         $this->update_mappings();
         $this->process_enrolments();
     }
@@ -74,12 +75,6 @@ class syncleaders extends \core\task\scheduled_task {
      */
     private function update_mappings() {
         global $DB;
-
-        // Remove old mappings. We're only keeping the current year. This doesn't delete any current enrolments.
-        $moduleshortnamenotlike = $DB->sql_like('moduleshortcode', ':moduleshortcode', false, false, true);
-        $DB->delete_records_select('local_sync_courseleaders_map', $moduleshortnamenotlike, [
-            'moduleshortcode' => '%\_' . self::get_currentacademicyear(),
-        ]);
 
         $c1shortnamelike = $DB->sql_like('c1.shortname', ':c1shortname');
         $c2shortnamenotlike = $DB->sql_like('c2.shortname', ':c2shortname', false, false, true);
@@ -133,6 +128,18 @@ class syncleaders extends \core\task\scheduled_task {
             'c2shortname' => '%\_%',
         ];
         $records = $DB->get_records_sql($sql, $params);
+
+        // Remove anything that should be excluded. The sql is complicated enough, so just filter the results.
+        $excludeshortnames = get_config('local_sync_courseleaders', 'excludeshortname');
+        $excludeshortnames = self::clean_csv($excludeshortnames);
+        if (count($excludeshortnames) > 0) {
+            $records = array_filter($records, function ($record) use ($excludeshortnames) {
+                return (
+                    !in_array($record->moduleshortcode, $excludeshortnames) &&
+                    !in_array($record->courseshortcode, $excludeshortnames)
+                );
+            });
+        }
 
         // Insert unique mappings.
         $map = [];
@@ -225,6 +232,36 @@ class syncleaders extends \core\task\scheduled_task {
     }
 
     /**
+     * Remove old mappings
+     *
+     * @return void
+     */
+    private function remove_old_mappings(): void {
+        global $DB;
+        // Remove old mappings. We're only keeping the current year. This doesn't delete any current enrolments.
+        $moduleshortnamenotlike = $DB->sql_like('moduleshortcode', ':moduleshortcode', false, false, true);
+        $DB->delete_records_select('local_sync_courseleaders_map', $moduleshortnamenotlike, [
+            'moduleshortcode' => '%\_' . self::get_currentacademicyear(),
+        ]);
+
+        // Remove any excluded shortnames - these might have been added after the fact.
+        $excludeshortnames = get_config('local_sync_courseleaders', 'excludeshortname');
+        $excludeshortnames = self::clean_csv($excludeshortnames);
+        if (count($excludeshortnames) > 0) {
+            $exsql = [];
+            $exparams = [];
+            for ($x = 0; $x < count($excludeshortnames); $x++) {
+                $exsql[] = $DB->sql_like('moduleshortcode', ':c1shortname' . $x);
+                $exsql[] = $DB->sql_like('courseshortcode', ':c2shortname' . $x);
+                $exparams['c1shortname' . $x] = "%{$excludeshortnames[$x]}%";
+                $exparams['c2shortname' . $x] = "%{$excludeshortnames[$x]}%";
+            }
+            $where = implode(' OR ', $exsql);
+            $DB->delete_records_select('local_sync_courseleaders_map', $where, $exparams);
+        }
+    }
+
+    /**
      * Returns the current academic year, assuming it starts on 1st August.
      *
      * @return string Formatted YYYY/YY
@@ -241,5 +278,28 @@ class syncleaders extends \core\task\scheduled_task {
         }
         $yearend = substr($yearend, 2, 2);
         return "$yearstart/$yearend";
+    }
+
+    /**
+     * Take a csv string and return a clean array
+     *
+     * @param string $csv
+     * @return array
+     */
+    public static function clean_csv(string $csv): array {
+        $list = [];
+        if (empty(trim($csv))) {
+            return $list;
+        }
+        $items = explode(',', $csv);
+        if (count($items) == 0) {
+            return $list;
+        }
+        foreach ($items as $item) {
+            if (!empty($item)) {
+                $list[] = $item;
+            }
+        }
+        return $list;
     }
 }

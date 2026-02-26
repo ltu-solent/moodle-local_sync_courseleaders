@@ -53,5 +53,15 @@ if ($hassiteconfig) {
             (60 * 60 * 24 * 730) => new lang_string('numdays', '', 730), // 2 years.
         ]
     ));
+
+    // Exclude course shortname.
+    $settings->add(
+        new admin_setting_configtextarea(
+            'local_sync_courseleaders/excludeshortname',
+            new lang_string('excludeshortname', 'local_sync_courseleaders'),
+            new lang_string('excludeshortname_desc', 'local_sync_courseleaders'),
+            ''
+        )
+    );
     $ADMIN->add('localplugins', $settings);
 }
