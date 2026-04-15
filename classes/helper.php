@@ -63,4 +63,23 @@ class helper {
         }
         return $list;
     }
+
+    /**
+     * Returns the current academic year, assuming it starts on 1st August.
+     *
+     * @return string Formatted YYYY/YY
+     */
+    public static function get_currentacademicyear(): string {
+        $cyear = date('Y');
+        $cmonth = date('n');
+        $yearend = $cyear;
+        $yearstart = $cyear;
+        if ($cmonth < 8) {
+            $yearstart = $cyear - 1;
+        } else {
+            $yearend = $cyear + 1;
+        }
+        $yearend = substr($yearend, 2, 2);
+        return "$yearstart/$yearend";
+    }
 }

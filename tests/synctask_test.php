@@ -18,8 +18,7 @@ namespace local_sync_courseleaders;
 
 use local_sync_courseleaders\task\syncleaders;
 use core\context;
-use core_reportbuilder\external\filters\set;
-use enrol_manual_plugin;
+
 
 /**
  * Tests for Sync course leaders
@@ -27,6 +26,7 @@ use enrol_manual_plugin;
  * @package    local_sync_courseleaders
  * @category   test
  * @copyright  2025 Southampton Solent University {@link https://www.solent.ac.uk}
+ * @author Mark Sharp <mark.sharp@solent.ac.uk>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @covers \local_sync_courseleaders\task\syncleaders
  */
@@ -60,7 +60,7 @@ final class synctask_test extends \advanced_testcase {
         $leader = $this->getDataGenerator()->create_user();
 
         // Create courses: one course, two modules.
-        $currentacademicyear = syncleaders::get_currentacademicyear();
+        $currentacademicyear = helper::get_currentacademicyear();
         set_config('sessions', $currentacademicyear, 'local_sync_courseleaders');
         $course = $this->getDataGenerator()->create_course(['shortname' => 'COURSE']);
         $module1 = $this->getDataGenerator()->create_course(['shortname' => 'MOD101_' . $currentacademicyear]);
@@ -161,16 +161,16 @@ final class synctask_test extends \advanced_testcase {
                 'expiry' => 0,
             ],
             'six months' => [
-                'expiry' => (60 * 60 * 24 * 182),
+                'expiry' => (DAYSECS * 182),
             ],
             'one year' => [
-                'expiry' => (60 * 60 * 24 * 365),
+                'expiry' => (DAYSECS * 365),
             ],
             'eighteen months' => [
-                'expiry' => (60 * 60 * 24 * 547),
+                'expiry' => (DAYSECS * 547),
             ],
             'two years' => [
-                'expiry' => (60 * 60 * 24 * 730),
+                'expiry' => (DAYSECS * 730),
             ],
         ];
     }
@@ -192,7 +192,7 @@ final class synctask_test extends \advanced_testcase {
         $leader = $this->getDataGenerator()->create_user();
 
         // Create courses: one course, two modules.
-        $currentacademicyear = syncleaders::get_currentacademicyear();
+        $currentacademicyear = helper::get_currentacademicyear();
         set_config('sessions', $currentacademicyear, 'local_sync_courseleaders');
         $course = $this->getDataGenerator()->create_course(['shortname' => 'COURSE']);
         $module1 = $this->getDataGenerator()->create_course(['shortname' => 'MOD101_' . $currentacademicyear]);
@@ -261,7 +261,7 @@ final class synctask_test extends \advanced_testcase {
     public function test_suspending_courseleader(): void {
         global $DB;
         set_config('expireenrolment', 0, 'local_sync_courseleaders');
-        set_config('sessions', syncleaders::get_currentacademicyear(), 'local_sync_courseleaders');
+        set_config('sessions', helper::get_currentacademicyear(), 'local_sync_courseleaders');
         // Create roles.
         $studentrole = $DB->get_record('role', ['shortname' => 'student']);
         $courseleaderroleid = create_role('Course leader', 'courseleader', 'Course leader role');
@@ -271,7 +271,7 @@ final class synctask_test extends \advanced_testcase {
         $leader = $this->getDataGenerator()->create_user();
 
         // Create courses: one course, two modules.
-        $currentacademicyear = syncleaders::get_currentacademicyear();
+        $currentacademicyear = helper::get_currentacademicyear();
         $course = $this->getDataGenerator()->create_course(['shortname' => 'COURSE']);
         $module1 = $this->getDataGenerator()->create_course(['shortname' => 'MOD101_' . $currentacademicyear]);
         $module2 = $this->getDataGenerator()->create_course(['shortname' => 'MOD102_' . $currentacademicyear]);
@@ -336,7 +336,7 @@ final class synctask_test extends \advanced_testcase {
         global $DB;
         $this->resetAfterTest();
         $task = new syncleaders();
-        $currentacademicyear = $task->get_currentacademicyear();
+        $currentacademicyear = helper::get_currentacademicyear();
         $currentyearstart = explode('/', $currentacademicyear)[0];
         $startyears = range((int)$currentyearstart - 5, (int)$currentyearstart);
         set_config('sessions', $currentacademicyear, 'local_sync_courseleaders');
@@ -369,7 +369,7 @@ final class synctask_test extends \advanced_testcase {
         global $DB;
         $this->resetAfterTest();
         $task = new syncleaders();
-        $currentacademicyear = $task->get_currentacademicyear();
+        $currentacademicyear = helper::get_currentacademicyear();
         set_config('sessions', $currentacademicyear, 'local_sync_courseleaders');
         $exclude = [
             'ABC101_' . $currentacademicyear,

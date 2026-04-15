@@ -15,10 +15,11 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * TODO describe file settings
+ * Settings for Sync course leaders
  *
  * @package    local_sync_courseleaders
  * @copyright  2025 Southampton Solent University {@link https://www.solent.ac.uk}
+ * @author Mark Sharp <mark.sharp@solent.ac.uk>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -45,13 +46,13 @@ if ($hassiteconfig) {
         'local_sync_courseleaders/expireenrolment',
         new lang_string('expireenrolments', 'local_sync_courseleaders'),
         new lang_string('expireenrolments_desc', 'local_sync_courseleaders'),
-        (60 * 60 * 24 * 547),
+        (DAYSECS * 547),
         [
             0   => new lang_string('neverexpire', 'local_sync_courseleaders'),
-            (60 * 60 * 24 * 182) => new lang_string('numdays', '', 182), // 6 months.
-            (60 * 60 * 24 * 365) => new lang_string('numdays', '', 365), // 1 year.
-            (60 * 60 * 24 * 547) => new lang_string('numdays', '', 547), // 18 months.
-            (60 * 60 * 24 * 730) => new lang_string('numdays', '', 730), // 2 years.
+            (DAYSECS * 182) => new lang_string('numdays', '', 182), // 6 months.
+            (DAYSECS * 365) => new lang_string('numdays', '', 365), // 1 year.
+            (DAYSECS * 547) => new lang_string('numdays', '', 547), // 18 months.
+            (DAYSECS * 730) => new lang_string('numdays', '', 730), // 2 years.
         ]
     ));
 

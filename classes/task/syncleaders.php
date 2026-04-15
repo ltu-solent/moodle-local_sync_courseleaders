@@ -17,8 +17,8 @@
 namespace local_sync_courseleaders\task;
 
 use core\context;
+use core\user;
 use core_php_time_limit;
-use core_user;
 use local_sync_courseleaders\helper;
 use stdClass;
 
@@ -27,6 +27,7 @@ use stdClass;
  *
  * @package    local_sync_courseleaders
  * @copyright  2025 Southampton Solent University {@link https://www.solent.ac.uk}
+ * @author Mark Sharp <mark.sharp@solent.ac.uk>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class syncleaders extends \core\task\scheduled_task {
@@ -146,7 +147,7 @@ class syncleaders extends \core\task\scheduled_task {
 
         // Remove anything that should be excluded. The sql is complicated enough, so just filter the results.
         $excludeshortnames = get_config('local_sync_courseleaders', 'excludeshortname');
-        $excludeshortnames = self::clean_csv($excludeshortnames);
+        $excludeshortnames = helper::clean_csv($excludeshortnames);
         if (count($excludeshortnames) > 0) {
             $records = array_filter($records, function ($record) use ($excludeshortnames) {
                 return (
@@ -178,7 +179,7 @@ class syncleaders extends \core\task\scheduled_task {
 
         $mappings = $DB->get_records('local_sync_courseleaders_map');
         $enrolplugin = enrol_get_plugin('manual');
-        $expireenrolment = get_config('local_sync_courseleaders', 'expireenrolment') ?? (60 * 60 * 24 * 547); // 18 months.
+        $expireenrolment = get_config('local_sync_courseleaders', 'expireenrolment') ?? (DAYSECS * 547); // 18 months.
         $timeend = 0;
         if ($expireenrolment > 0) {
             $timeend = time() + $expireenrolment;
@@ -219,11 +220,11 @@ class syncleaders extends \core\task\scheduled_task {
                     'userid' => $leader->userid,
                     'contextid' => $modulecontext->id,
                 ]);
-                $cl = core_user::get_user($leader->userid);
+                $cl = user::get_user($leader->userid);
                 if (!$cl) {
                     continue;
                 }
-                $fullname = core_user::get_fullname($cl);
+                $fullname = user::get_fullname($cl);
                 // If the mapping is not enabled or the user is suspended unenrol them, if enrolled.
                 if ($raexists && (!$mapping->enabled || $cl->suspended)) {
                     mtrace('- Unenrolling ' . $fullname . ' from ' . $mapping->moduleshortcode);
@@ -293,47 +294,5 @@ class syncleaders extends \core\task\scheduled_task {
             $where = implode(' OR ', $exsql);
             $DB->delete_records_select('local_sync_courseleaders_map', $where, $exparams);
         }
-    }
-
-    /**
-     * Returns the current academic year, assuming it starts on 1st August.
-     *
-     * @return string Formatted YYYY/YY
-     */
-    public static function get_currentacademicyear(): string {
-        $cyear = date('Y');
-        $cmonth = date('n');
-        $yearend = $cyear;
-        $yearstart = $cyear;
-        if ($cmonth < 8) {
-            $yearstart = $cyear - 1;
-        } else {
-            $yearend = $cyear + 1;
-        }
-        $yearend = substr($yearend, 2, 2);
-        return "$yearstart/$yearend";
-    }
-
-    /**
-     * Take a csv string and return a clean array
-     *
-     * @param string $csv
-     * @return array
-     */
-    public static function clean_csv(string $csv): array {
-        $list = [];
-        if (empty(trim($csv))) {
-            return $list;
-        }
-        $items = explode(',', $csv);
-        if (count($items) == 0) {
-            return $list;
-        }
-        foreach ($items as $item) {
-            if (!empty($item)) {
-                $list[] = $item;
-            }
-        }
-        return $list;
     }
 }

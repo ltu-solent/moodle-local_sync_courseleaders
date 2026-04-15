@@ -27,6 +27,7 @@ use core_external\external_value;
  *
  * @package    local_sync_courseleaders
  * @copyright  2025 Southampton Solent University {@link https://www.solent.ac.uk}
+ * @author Mark Sharp <mark.sharp@solent.ac.uk>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class update_mappings extends external_api {
