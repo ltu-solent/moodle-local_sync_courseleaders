@@ -19,6 +19,7 @@ namespace local_sync_courseleaders\task;
 use core\context;
 use core_php_time_limit;
 use core_user;
+use local_sync_courseleaders\helper;
 use stdClass;
 
 /**
@@ -63,8 +64,11 @@ class syncleaders extends \core\task\scheduled_task {
         raise_memory_limit(MEMORY_HUGE);
         $this->studentrole = $DB->get_record('role', ['shortname' => 'student']);
         $this->courseleaderrole = $DB->get_record('role', ['shortname' => 'courseleader']);
+        mtrace('Removing old mappings...');
         $this->remove_old_mappings();
+        mtrace('Updating mappings based on enrolments...');
         $this->update_mappings();
+        mtrace('Processing enrolments based on mappings...');
         $this->process_enrolments();
     }
 
@@ -75,8 +79,20 @@ class syncleaders extends \core\task\scheduled_task {
      */
     private function update_mappings() {
         global $DB;
-
-        $c1shortnamelike = $DB->sql_like('c1.shortname', ':c1shortname');
+        $c1shortnamelikes = [];
+        $c1shortnameparams = [];
+        $sessions = get_config('local_sync_courseleaders', 'sessions');
+        $sessions = helper::clean_csv($sessions);
+        if (count($sessions) == 0) {
+            // If no sessions are selected, don't add any mappings.
+            // Existing mappings will be removed in `remove_old_mappings()`.
+            return;
+        }
+        foreach ($sessions as $x => $session) {
+            $c1shortnamelikes[] = $DB->sql_like('c1.shortname', ':c1shortname' . $x);
+            $c1shortnameparams['c1shortname' . $x] = '%\_' . $session;
+        }
+        $c1shortnamelike = implode(' OR ', $c1shortnamelikes);
         $c2shortnamenotlike = $DB->sql_like('c2.shortname', ':c2shortname', false, false, true);
         // For Moodle, must have a distinct first field as this is the key.
         $sql = "SELECT DISTINCT(CONCAT(c1.shortname, '|', c2.shortname)) id,
@@ -106,13 +122,12 @@ class syncleaders extends \core\task\scheduled_task {
                     AND ra2.itemid = e2.id
                  WHERE c1.id <> c2.id
                     AND ue.status = :status1active
-                    AND {$c1shortnamelike}
+                    AND ({$c1shortnamelike})
                     AND {$c2shortnamenotlike}";
         // This assumes module shortnames end with the academic year and course shortnames do not have underscores.
         // I could use relative categories or the course custom field "pagetype" to be more precise, but that would involve
         // more joins.
         // I want to exclude "Additional Resources".
-
         $params = [
             'roleid1' => $this->studentrole->id,
             'enrol1' => 'solaissits',
@@ -124,9 +139,9 @@ class syncleaders extends \core\task\scheduled_task {
             'roleid2' => $this->studentrole->id,
             'component2' => 'enrol_solaissits',
             'status1active' => ENROL_USER_ACTIVE,
-            'c1shortname' => '%\_' . self::get_currentacademicyear(),
             'c2shortname' => '%\_%',
         ];
+        $params = array_merge($params, $c1shortnameparams);
         $records = $DB->get_records_sql($sql, $params);
 
         // Remove anything that should be excluded. The sql is complicated enough, so just filter the results.
@@ -160,8 +175,7 @@ class syncleaders extends \core\task\scheduled_task {
      */
     private function process_enrolments() {
         global $DB;
-        // Do I want to go through all mappings ever?
-        // Might be an idea to clear up old mappings.
+
         $mappings = $DB->get_records('local_sync_courseleaders_map');
         $enrolplugin = enrol_get_plugin('manual');
         $expireenrolment = get_config('local_sync_courseleaders', 'expireenrolment') ?? (60 * 60 * 24 * 547); // 18 months.
@@ -238,15 +252,35 @@ class syncleaders extends \core\task\scheduled_task {
      */
     private function remove_old_mappings(): void {
         global $DB;
-        // Remove old mappings. We're only keeping the current year. This doesn't delete any current enrolments.
+        // Remove old mappings. We're only keeping the selected sessions. This doesn't delete any current enrolments.
         $moduleshortnamenotlike = $DB->sql_like('moduleshortcode', ':moduleshortcode', false, false, true);
-        $DB->delete_records_select('local_sync_courseleaders_map', $moduleshortnamenotlike, [
-            'moduleshortcode' => '%\_' . self::get_currentacademicyear(),
-        ]);
+        $sessions = get_config('local_sync_courseleaders', 'sessions');
+        $sessions = helper::clean_csv($sessions);
+        if (count($sessions) == 0) {
+            // If no sessions are selected, remove all mappings.
+            // This will also remove any disabled mappings, which will need to be disabled if the session is required again.
+            $DB->delete_records('local_sync_courseleaders_map');
+            return;
+        }
+
+        $sessionsql = [];
+        $params = [];
+        foreach ($sessions as $x => $session) {
+            $sessionsql[] = $DB->sql_like(
+                fieldname: 'moduleshortcode',
+                param: ':moduleshortcode' . $x,
+                casesensitive: false,
+                accentsensitive: false,
+                notlike: true
+            );
+            $params['moduleshortcode' . $x] = '%\_' . $session;
+        }
+        $moduleshortnamenotlike = '(' . implode(' OR ', $sessionsql) . ')';
+        $DB->delete_records_select('local_sync_courseleaders_map', $moduleshortnamenotlike, $params);
 
         // Remove any excluded shortnames - these might have been added after the fact.
         $excludeshortnames = get_config('local_sync_courseleaders', 'excludeshortname');
-        $excludeshortnames = self::clean_csv($excludeshortnames);
+        $excludeshortnames = helper::clean_csv($excludeshortnames);
         if (count($excludeshortnames) > 0) {
             $exsql = [];
             $exparams = [];

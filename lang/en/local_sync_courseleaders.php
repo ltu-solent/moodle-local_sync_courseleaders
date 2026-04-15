@@ -61,6 +61,8 @@ $string['resetall'] = 'Reset filters';
 
 $string['selectedcourses'] = 'Selected courses';
 $string['selectitem'] = 'Select mapping: {$a->moduleshortcode} -> {$a->courseshortcode}';
+$string['sessions'] = 'Sessions';
+$string['sessions_desc'] = 'The selected sessions will be included in the mapping. If no sessions are selected, no sessions will be included.';
 
 $string['task:syncleaders'] = 'Sync course leaders to modules';
 

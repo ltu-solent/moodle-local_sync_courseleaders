@@ -24,6 +24,7 @@
 
 use core\lang_string;
 use core\url;
+use local_sync_courseleaders\helper;
 
 defined('MOODLE_INTERNAL') || die();
 
@@ -61,6 +62,17 @@ if ($hassiteconfig) {
             new lang_string('excludeshortname', 'local_sync_courseleaders'),
             new lang_string('excludeshortname_desc', 'local_sync_courseleaders'),
             ''
+        )
+    );
+
+    // Which sessions to include.
+    $settings->add(
+        new admin_setting_configmultiselect(
+            'local_sync_courseleaders/sessions',
+            new lang_string('sessions', 'local_sync_courseleaders'),
+            new lang_string('sessions_desc', 'local_sync_courseleaders'),
+            [],
+            helper::get_session_menu()
         )
     );
     $ADMIN->add('localplugins', $settings);

@@ -37,7 +37,7 @@ Course leader B is enrolled on the following:
 - ABC402_2024/25 (Module leader)
 - XXABCBKGWDGTS (Course leader)
 
-Because Student A is enrolled on those three modules and a course, any Course leader enrolled on that course will get enrolled as course leader on those three moduules. Resulting in the following:
+Because Student A is enrolled on those three modules and a course, any Course leader enrolled on that course will get enrolled as course leader on those three modules. Resulting in the following:
 
 Course leader A is enrolled on the following:
 

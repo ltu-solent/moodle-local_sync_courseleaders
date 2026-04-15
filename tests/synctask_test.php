@@ -18,6 +18,7 @@ namespace local_sync_courseleaders;
 
 use local_sync_courseleaders\task\syncleaders;
 use core\context;
+use core_reportbuilder\external\filters\set;
 use enrol_manual_plugin;
 
 /**
@@ -60,6 +61,7 @@ final class synctask_test extends \advanced_testcase {
 
         // Create courses: one course, two modules.
         $currentacademicyear = syncleaders::get_currentacademicyear();
+        set_config('sessions', $currentacademicyear, 'local_sync_courseleaders');
         $course = $this->getDataGenerator()->create_course(['shortname' => 'COURSE']);
         $module1 = $this->getDataGenerator()->create_course(['shortname' => 'MOD101_' . $currentacademicyear]);
         $module2 = $this->getDataGenerator()->create_course(['shortname' => 'MOD102_' . $currentacademicyear]);
@@ -191,6 +193,7 @@ final class synctask_test extends \advanced_testcase {
 
         // Create courses: one course, two modules.
         $currentacademicyear = syncleaders::get_currentacademicyear();
+        set_config('sessions', $currentacademicyear, 'local_sync_courseleaders');
         $course = $this->getDataGenerator()->create_course(['shortname' => 'COURSE']);
         $module1 = $this->getDataGenerator()->create_course(['shortname' => 'MOD101_' . $currentacademicyear]);
         $module2 = $this->getDataGenerator()->create_course(['shortname' => 'MOD102_' . $currentacademicyear]);
@@ -258,6 +261,7 @@ final class synctask_test extends \advanced_testcase {
     public function test_suspending_courseleader(): void {
         global $DB;
         set_config('expireenrolment', 0, 'local_sync_courseleaders');
+        set_config('sessions', syncleaders::get_currentacademicyear(), 'local_sync_courseleaders');
         // Create roles.
         $studentrole = $DB->get_record('role', ['shortname' => 'student']);
         $courseleaderroleid = create_role('Course leader', 'courseleader', 'Course leader role');
@@ -324,7 +328,7 @@ final class synctask_test extends \advanced_testcase {
     }
 
     /**
-     * Remove mappings where the module code doesn't match the current academic year.
+     * Remove mappings where the module code doesn't match the selected academic year.
      *
      * @return void
      */
@@ -335,7 +339,7 @@ final class synctask_test extends \advanced_testcase {
         $currentacademicyear = $task->get_currentacademicyear();
         $currentyearstart = explode('/', $currentacademicyear)[0];
         $startyears = range((int)$currentyearstart - 5, (int)$currentyearstart);
-
+        set_config('sessions', $currentacademicyear, 'local_sync_courseleaders');
         $mappings = [];
         foreach ($startyears as $year) {
             for ($x = 0; $x < 5; $x++) {
@@ -351,8 +355,9 @@ final class synctask_test extends \advanced_testcase {
         $this->assertCount(count($mappings), $DB->get_records('local_sync_courseleaders_map'));
         // Run the task to remove the old mappings.
         $task->execute();
-        // Should only be 5 module mappings left for the current year.
+        // Should only be 5 module mappings left for the selected academic year.
         $this->assertCount(5, $DB->get_records('local_sync_courseleaders_map'));
+        $this->expectOutputRegex('#Removing old mappings...#');
     }
 
     /**
@@ -365,6 +370,7 @@ final class synctask_test extends \advanced_testcase {
         $this->resetAfterTest();
         $task = new syncleaders();
         $currentacademicyear = $task->get_currentacademicyear();
+        set_config('sessions', $currentacademicyear, 'local_sync_courseleaders');
         $exclude = [
             'ABC101_' . $currentacademicyear,
             'Someother_page',
@@ -388,7 +394,89 @@ final class synctask_test extends \advanced_testcase {
         $this->assertCount(count($mappings), $DB->get_records('local_sync_courseleaders_map'));
         // Run the task to remove the old mappings.
         $task->execute();
-        // Should only be 1 module mappings left for the current year.
+        // Should only be 1 module mappings left for the selected academic year.
         $this->assertCount(1, $DB->get_records('local_sync_courseleaders_map'));
+        $this->expectOutputRegex('#Removing old mappings...#');
+    }
+
+    /**
+     * The session setting determines which academic years are included for mapping modules and courses.
+     *
+     * @return void
+     */
+    public function test_session_configuration(): void {
+        global $DB;
+        $this->resetAfterTest();
+        // Create roles.
+        $studentrole = $DB->get_record('role', ['shortname' => 'student']);
+        $courseleaderroleid = create_role('Course leader', 'courseleader', 'Course leader role');
+
+        // Create and enrol users.
+        $student = $this->getDataGenerator()->create_user();
+        $leader = $this->getDataGenerator()->create_user();
+        $course = $this->getDataGenerator()->create_course(['shortname' => 'XXCOURSECODE']);
+        /** @var \enrol_solaissits_plugin $enrolplugin */
+        $enrolplugin = enrol_get_plugin('solaissits');
+        $enrolid = $enrolplugin->add_instance($course, ['status' => ENROL_INSTANCE_ENABLED, 'name' => 'solaissits']);
+        $enrolinstance = $DB->get_record('enrol', ['id' => $enrolid]);
+        // Enrol student via solaissits.
+        $enrolplugin->enrol_user($enrolinstance, $student->id, $studentrole->id);
+        // Assign course leader role on course.
+        role_assign($courseleaderroleid, $leader->id, context\course::instance($course->id));
+
+        $task = new syncleaders();
+        $sessionmenu = helper::get_session_menu();
+        // Pick off the first 3 sessions for testing, which should include the next year, the current academic year and last year.
+        $selectedsessions = array_slice($sessionmenu, 0, 3, true);
+        set_config('sessions', implode(',', $selectedsessions), 'local_sync_courseleaders');
+        $mappings = [];
+        // Add a mapping for all sessions available in the menu.
+        foreach ($sessionmenu as $session) {
+            $mappings[] = [
+                'moduleshortcode' => 'ABC101_' . $session,
+                'courseshortcode' => 'XXCOURSECODE',
+            ];
+            // Create module for mapping.
+            $module = $this->getDataGenerator()->create_course(['shortname' => 'ABC101_' . $session]);
+            // Add student to module via solaissits.
+            $enrolid = $enrolplugin->add_instance($module, ['status' => ENROL_INSTANCE_ENABLED, 'name' => 'solaissits']);
+            $enrolinstance = $DB->get_record('enrol', ['id' => $enrolid]);
+            $enrolplugin->enrol_user($enrolinstance, $student->id, $studentrole->id);
+        }
+        $DB->insert_records('local_sync_courseleaders_map', $mappings);
+        $this->assertCount(count($mappings), $DB->get_records('local_sync_courseleaders_map'));
+
+        // Run the task to remove mappings not in the selected sessions and enrol course leaders.
+        $task->execute();
+
+        $remainingmappings = $DB->get_records('local_sync_courseleaders_map');
+        $this->assertCount(3, $remainingmappings);
+        // Course leaders should only be enrolled on modules for the selected sessions.
+        foreach ($mappings as $mapping) {
+            $module = $DB->get_record('course', ['shortname' => $mapping['moduleshortcode']]);
+            // Get last value after the underscore, which should be the year e.g. 2026/27.
+            $len = strlen($mapping['moduleshortcode']);
+            $year = substr($mapping['moduleshortcode'], $len - 7, $len);
+            if (in_array($year, $selectedsessions)) {
+                $this->assertTrue($DB->record_exists('role_assignments', [
+                    'roleid' => $courseleaderroleid,
+                    'userid' => $leader->id,
+                    'contextid' => context\course::instance($module->id)->id,
+                ]));
+            } else {
+                $this->assertFalse($DB->record_exists('role_assignments', [
+                    'roleid' => $courseleaderroleid,
+                    'userid' => $leader->id,
+                    'contextid' => context\course::instance($module->id)->id,
+                ]));
+            }
+        }
+        // Remove the oldest session. This won't unenrol anyone, but will stop new enrolments.
+        array_pop($selectedsessions);
+        set_config('sessions', implode(',', $selectedsessions), 'local_sync_courseleaders');
+        $task->execute();
+        $remainingmappings = $DB->get_records('local_sync_courseleaders_map');
+        $this->assertCount(2, $remainingmappings);
+        $this->expectOutputRegex('#Removing old mappings...#');
     }
 }
