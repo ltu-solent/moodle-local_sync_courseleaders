@@ -162,10 +162,17 @@ class syncleaders extends \core\task\scheduled_task {
         foreach ($records as $key => $rec) {
             $map[$key] = ['moduleshortcode' => $rec->moduleshortcode, 'courseshortcode' => $rec->courseshortcode];
         }
+        $newmappings = 0;
         foreach ($map as $pair) {
             if (!$DB->record_exists('local_sync_courseleaders_map', $pair)) {
+                mtrace('- New mapping created mapping ' .
+                    $pair['courseshortcode'] . ' to ' . $pair['moduleshortcode']);
                 $DB->insert_record('local_sync_courseleaders_map', $pair, false, true);
+                $newmappings++;
             }
+        }
+        if ($newmappings > 0) {
+            mtrace("Total new mappings created: $newmappings");
         }
     }
 
@@ -176,7 +183,6 @@ class syncleaders extends \core\task\scheduled_task {
      */
     private function process_enrolments() {
         global $DB;
-
         $mappings = $DB->get_records('local_sync_courseleaders_map');
         $enrolplugin = enrol_get_plugin('manual');
         $expireenrolment = get_config('local_sync_courseleaders', 'expireenrolment') ?? (DAYSECS * 547); // 18 months.
@@ -199,11 +205,6 @@ class syncleaders extends \core\task\scheduled_task {
             if (count($leaders) == 0) {
                 continue;
             }
-            $enabled = $mapping->enabled
-                ? get_string('enabled', 'local_sync_courseleaders')
-                : get_string('notenabled', 'local_sync_courseleaders');
-            mtrace(count($leaders) . ' leaders found for mapping ' .
-                $mapping->courseshortcode . ' to ' . $mapping->moduleshortcode . " ($enabled)");
             $instances = enrol_get_instances($module->id, true);
             $manualinstance = array_filter($instances, function ($instance) {
                 return $instance->enrol == 'manual';
@@ -261,6 +262,7 @@ class syncleaders extends \core\task\scheduled_task {
             // If no sessions are selected, remove all mappings.
             // This will also remove any disabled mappings, which will need to be disabled if the session is required again.
             $DB->delete_records('local_sync_courseleaders_map');
+            mtrace('- All mappings have been removed because no sessions are selected.');
             return;
         }
 
@@ -276,8 +278,12 @@ class syncleaders extends \core\task\scheduled_task {
             );
             $params['moduleshortcode' . $x] = '%\_' . $session;
         }
-        $moduleshortnamenotlike = '(' . implode(' OR ', $sessionsql) . ')';
-        $DB->delete_records_select('local_sync_courseleaders_map', $moduleshortnamenotlike, $params);
+        $moduleshortnamenotlike = '(' . implode(' AND ', $sessionsql) . ')';
+        $count = $DB->count_records_select('local_sync_courseleaders_map', $moduleshortnamenotlike, $params);
+        if ($count > 0) {
+            mtrace("- $count mappings have been removed because they no longer match the selected sessions.");
+            $DB->delete_records_select('local_sync_courseleaders_map', $moduleshortnamenotlike, $params);
+        }
 
         // Remove any excluded shortnames - these might have been added after the fact.
         $excludeshortnames = get_config('local_sync_courseleaders', 'excludeshortname');
@@ -292,7 +298,11 @@ class syncleaders extends \core\task\scheduled_task {
                 $exparams['c2shortname' . $x] = "%{$excludeshortnames[$x]}%";
             }
             $where = implode(' OR ', $exsql);
-            $DB->delete_records_select('local_sync_courseleaders_map', $where, $exparams);
+            $count = $DB->count_records_select('local_sync_courseleaders_map', $where, $exparams);
+            if ($count > 0) {
+                mtrace("- $count mappings have been removed because they match the excluded shortnames.");
+                $DB->delete_records_select('local_sync_courseleaders_map', $where, $exparams);
+            }
         }
     }
 }
