@@ -120,6 +120,11 @@ final class synctask_test extends \advanced_testcase {
             $enrolment = reset($enrolments);
             $this->assertCount(1, $enrolments);
             $this->assertEquals($expiredate, date('Y-m-d', $enrolment->timeend));
+            $group = $DB->get_record('groups', [
+                'courseid' => $mod->id,
+                'idnumber' => $mod->shortname . '-' . $course->shortname,
+            ]);
+            $this->assertTrue(groups_is_member($group->id, $leader->id));
         }
 
         // The old module should not have any enrolments.

@@ -22,6 +22,10 @@ use core_php_time_limit;
 use local_sync_courseleaders\helper;
 use stdClass;
 
+defined('MOODLE_INTERNAL') || die();
+
+require_once($CFG->dirroot . '/group/lib.php');
+
 /**
  * Class syncleaders
  *
@@ -225,12 +229,14 @@ class syncleaders extends \core\task\scheduled_task {
                 if (!$cl) {
                     continue;
                 }
+                $addtogroup = true;
                 $fullname = user::get_fullname($cl);
                 // If the mapping is not enabled or the user is suspended unenrol them, if enrolled.
                 if ($raexists && (!$mapping->enabled || $cl->suspended)) {
                     mtrace('- Unenrolling ' . $fullname . ' from ' . $mapping->moduleshortcode);
                     $enrolplugin->unenrol_user($manualinstance, $leader->userid);
                     role_unassign($this->courseleaderrole->id, $leader->userid, $modulecontext->id);
+                    $addtogroup = false;
                 }
 
                 // Only enrol if not already enrolled and if the user's account is not suspended and the mapping is allowed.
@@ -242,6 +248,27 @@ class syncleaders extends \core\task\scheduled_task {
                     mtrace('- Enrolling ' . $fullname . ' on ' . $mapping->moduleshortcode . $expirydate);
                     // Doing this as a manual enrolment, so we can suspend later if we want.
                     $enrolplugin->enrol_user($manualinstance, $leader->userid, $this->courseleaderrole->id, 0, $timeend);
+                }
+                if ($addtogroup) {
+                    $groupidnumber = $mapping->moduleshortcode . '-' . $mapping->courseshortcode;
+                    $group = $DB->get_record('groups', [
+                        'courseid' => $module->id,
+                        'idnumber' => $groupidnumber,
+                    ]);
+                    if (!$group) {
+                        mtrace("- Creating group " . $groupidnumber . " in course " . $module->shortname);
+                        $groupid = groups_create_group((object)[
+                            'courseid' => $module->id,
+                            'idnumber' => $groupidnumber,
+                            'name' => s($course->fullname),
+                        ]);
+                    } else {
+                        $groupid = $group->id;
+                    }
+                    if (!groups_is_member($groupid, $leader->userid)) {
+                        mtrace("- Adding user " . $fullname . " to group " . $groupidnumber);
+                        groups_add_member($groupid, $leader->userid);
+                    }
                 }
             }
         }
